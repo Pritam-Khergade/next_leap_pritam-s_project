@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Input Contextual Nudge Prototype</title>
+  <style>
+    :root {
+      --blue: #378ADD;
+      --green: #1D9E75;
+      --bg: #f2f5f9;
+      --chat-ai: #f3f4f6;
+      --chat-border: #d9dde3;
+      --nudge-bg: #E6F1FB;
+      --transition: 300ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, #f8fbff, #e8edf5 60%, #dce2ec);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      display: grid;
+      place-items: center;
+      color: #142032;
+      padding: 18px;
+    }
+
+    .prototype {
+      width: min(440px, 100%);
+      display: grid;
+      gap: 14px;
+    }
+
+    .progress {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .step-pill {
+      border: 1px solid #c8d2df;
+      color: #627286;
+      background: #ffffff;
+      border-radius: 999px;
+      font-size: 11px;
+      padding: 6px 10px;
+      transition: all var(--transition);
+    }
+
+    .step-pill.active {
+      background: #dceeff;
+      border-color: #9ec8f2;
+      color: #1c5a9a;
+      font-weight: 600;
+    }
+
+    .phone-shell {
+      width: min(375px, 92vw);
+      margin: 0 auto;
+      border-radius: 36px;
+      border: 10px solid #0d0f14;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: 0 24px 60px rgba(17, 28, 44, 0.28);
+      position: relative;
+      aspect-ratio: 375 / 812;
+    }
+
+    .notch {
+      width: 140px;
+      height: 26px;
+      background: #0d0f14;
+      border-radius: 0 0 18px 18px;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+    }
+
+    .status-bar {
+      height: 42px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      position: relative;
+      z-index: 20;
+      background: linear-gradient(to bottom, #ffffff, #fbfcfe);
+      border-bottom: 1px solid #edf1f5;
+    }
+
+    .status-right {
+      color: #5a6574;
+      font-weight: 500;
+      font-size: 12px;
+    }
+
+    .viewport {
+      height: calc(100% - 42px);
+      position: relative;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity var(--transition), transform var(--transition);
+    }
+
+    .screen.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .chat-area {
+      position: absolute;
+      inset: 0;
+      padding: 16px 14px 120px;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 10px;
+    }
+
+    .bubble {
+      max-width: 82%;
+      border-radius: 16px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.38;
+      animation: popIn var(--transition);
+    }
+
+    .bubble.user {
+      margin-left: auto;
+      background: var(--blue);
+      color: #ffffff;
+      border-bottom-right-radius: 6px;
+    }
+
+    .bubble.ai {
+      margin-right: auto;
+      background: var(--chat-ai);
+      border: 1px solid var(--chat-border);
+      color: #243447;
+      border-bottom-left-radius: 6px;
+    }
+
+    .composer-wrap {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 14px;
+      display: grid;
+      gap: 8px;
+      z-index: 8;
+    }
+
+    .input-pill {
+      min-height: 56px;
+      border-radius: 999px;
+      background: #eef1f5;
+      border: 1px solid #d4dbe4;
+      padding: 8px 8px 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .input-pill input {
+      border: 0;
+      outline: 0;
+      background: transparent;
+      width: 100%;
+      font-size: 14px;
+      color: #2d3d51;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 0;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: transform var(--transition), background var(--transition), box-shadow var(--transition);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.96);
+    }
+
+    .mic-btn {
+      background: #dbeaf9;
+      color: var(--blue);
+    }
+
+    .mic-btn.active {
+      background: var(--blue);
+      color: #ffffff;
+      box-shadow: 0 0 0 4px rgba(55, 138, 221, 0.2);
+    }
+
+    .nudge-strip {
+      border: 1px solid #9ec8f2;
+      background: var(--nudge-bg);
+      border-radius: 14px;
+      font-size: 13px;
+      color: #1e568f;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 10px 10px 12px;
+      transform: translateY(8px);
+      opacity: 0;
+      transition: all var(--transition);
+    }
+
+    .nudge-strip.show {
+      display: flex;
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .nudge-text {
+      flex: 1;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .dismiss-btn {
+      border: 0;
+      border-radius: 999px;
+      background: #d0e6fa;
+      width: 24px;
+      height: 24px;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      color: #27659f;
+    }
+
+    .pulse-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(55, 138, 221, 0.18);
+      position: relative;
+      animation: pulse 1.3s infinite;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+
+    .pulse-dot::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      background: var(--blue);
+      border-radius: 50%;
+    }
+
+    .overlay-dim {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.42);
+      display: grid;
+      align-content: end;
+      z-index: 16;
+      animation: fadeIn var(--transition);
+    }
+
+    .sheet {
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      padding: 20px 16px 18px;
+      transform: translateY(100%);
+      animation: slideUp var(--transition) forwards;
+      box-shadow: 0 -12px 30px rgba(14, 21, 33, 0.22);
+    }
+
+    .sheet .circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 999px;
+      background: #d9ebff;
+      color: var(--blue);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 12px;
+    }
+
+    .sheet h2 {
+      margin: 0 0 8px;
+      text-align: center;
+      font-size: 22px;
+    }
+
+    .sheet p {
+      margin: 0;
+      text-align: center;
+      color: #4a596b;
+      font-size: 14px;
+    }
+
+    .privacy {
+      margin: 14px 0;
+      border: 1px solid #9dd8c5;
+      background: #e9faf4;
+      color: #0f7c5b;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 13px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .primary-btn {
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      background: var(--blue);
+      color: #ffffff;
+      height: 46px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity var(--transition);
+    }
+
+    .secondary-link {
+      margin-top: 10px;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: #4f5e70;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 8px 0 2px;
+    }
+
+    .record-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 12, 20, 0.88);
+      z-index: 18;
+      color: #ffffff;
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 16px;
+      padding: 22px;
+      text-align: center;
+      animation: fadeIn var(--transition);
+    }
+
+    .listening {
+      font-size: 24px;
+      letter-spacing: 0.2px;
+      font-weight: 700;
+    }
+
+    .dots::after {
+      content: "";
+      width: 22px;
+      display: inline-block;
+      text-align: left;
+      animation: dots 1.2s steps(3, end) infinite;
+    }
+
+    .wave {
+      display: flex;
+      align-items: end;
+      gap: 5px;
+      height: 46px;
+    }
+
+    .wave span {
+      width: 8px;
+      border-radius: 8px;
+      background: linear-gradient(to top, #2d75bf, #65aef7);
+      height: var(--h);
+      animation: wave 1s ease-in-out infinite;
+      animation-delay: var(--d);
+    }
+
+    .record-btn {
+      width: 98px;
+      height: 98px;
+      border-radius: 999px;
+      background: var(--blue);
+      display: grid;
+      place-items: center;
+      position: relative;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .record-btn::after {
+      content: "";
+      position: absolute;
+      inset: -12px;
+      border-radius: inherit;
+      border: 2px solid rgba(55, 138, 221, 0.5);
+      animation: ripple 1.4s infinite;
+    }
+
+    .transcript-live {
+      min-height: 84px;
+      max-width: 94%;
+      color: #dbe8f6;
+      line-height: 1.35;
+      font-size: 15px;
+    }
+
+    .cancel-link {
+      color: #ccd7e5;
+      text-decoration: underline;
+      font-size: 14px;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .confirm-panel {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 14px;
+      z-index: 12;
+      display: grid;
+      gap: 8px;
+    }
+
+    .transcript-box {
+      background: #fff5df;
+      border: 1px solid #f2d49e;
+      color: #6f4d1d;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.34;
+    }
+
+    .label {
+      font-size: 12px;
+      color: #8a6f44;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .confirm-row {
+      border-radius: 999px;
+      background: #eef1f5;
+      border: 1px solid #d4dbe4;
+      padding: 6px;
+      display: grid;
+      grid-template-columns: 40px 1fr 40px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .confirm-row input {
+      border: 0;
+      background: transparent;
+      outline: 0;
+      color: #2a394d;
+      font-size: 13px;
+      min-width: 0;
+    }
+
+    .send-btn {
+      background: var(--blue);
+      color: #fff;
+      font-size: 16px;
+    }
+
+    .tooltip {
+      border-radius: 12px;
+      background: #e9faf4;
+      border: 1px solid #99d9c3;
+      color: #0c7b59;
+      font-size: 13px;
+      padding: 10px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .success-badge {
+      margin: 10px auto 0;
+      width: max-content;
+      border-radius: 999px;
+      background: #e8f8f2;
+      border: 1px solid #9fdcc8;
+      color: #0f7f5d;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .restart-wrap {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 14px;
+      z-index: 14;
+    }
+
+    .restart-btn {
+      width: 100%;
+      border: 0;
+      height: 46px;
+      border-radius: 12px;
+      background: #1f2a3a;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .controls button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity var(--transition);
+    }
+
+    #backBtn {
+      background: #dee5ef;
+      color: #304257;
+    }
+
+    #nextBtn {
+      background: var(--blue);
+      color: #ffffff;
+    }
+
+    .controls button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .annotation {
+      background: #ffffff;
+      border: 1px solid #d8e0ea;
+      border-radius: 14px;
+      padding: 12px 13px;
+      color: #33465f;
+      font-size: 13px;
+      line-height: 1.45;
+      min-height: 92px;
+    }
+
+    .annotation h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .mic-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(55, 138, 221, 0.45); }
+      70% { box-shadow: 0 0 0 8px rgba(55, 138, 221, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(55, 138, 221, 0); }
+    }
+
+    @keyframes ripple {
+      0% { transform: scale(1); opacity: 0.85; }
+      100% { transform: scale(1.28); opacity: 0; }
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.5); }
+      50% { transform: scaleY(1); }
+    }
+
+    @keyframes dots {
+      0% { content: ""; }
+      33% { content: "."; }
+      66% { content: ".."; }
+      100% { content: "..."; }
+    }
+
+    @keyframes slideUp {
+      to { transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="prototype">
+    <div class="progress" id="progress"></div>
+
+    <div class="phone-shell">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>Leap AI</span>
+        <span class="status-right">5G 100%</span>
+      </div>
+      <div class="viewport" id="viewport"></div>
+    </div>
+
+    <div class="controls">
+      <button id="backBtn" type="button">Back</button>
+      <button id="nextBtn" type="button">Next</button>
+    </div>
+
+    <div class="annotation">
+      <h3 id="annotationTitle"></h3>
+      <p id="annotationText"></p>
+    </div>
+  </div>
+
+  <script>
+    const steps = [
+      { id: 1, label: "Discovery" },
+      { id: 2, label: "Permission" },
+      { id: 3, label: "Recording" },
+      { id: 4, label: "Confirm" },
+      { id: 5, label: "Success" }
+    ];
+
+    const annotations = {
+      1: "Fires after 40+ chars. Pulsing mic is non-blocking - disappears in 3s if user keeps typing. Dismiss suppresses for 24 hours.",
+      2: "Custom pre-OS-dialog screen to reduce denial rates. Privacy assurance addresses the top trust barrier identified in user research.",
+      3: "Full-screen dim + live waveform resolves the #1 pain point: users not knowing if recording was active. Progressive transcription builds confidence.",
+      4: "Editable transcription shown before submission reduces fear of mis-recognition. Time-saved tooltip provides positive reinforcement on first use.",
+      5: "Blue mic icon signals voice is now a first-class input. Green badge closes the feedback loop. Habit formation begins here."
+    };
+
+    const transcriptText = "Can you give me a full breakdown of how to answer the tell me about a time you made a tradeoff question?";
+    const aiFinalReply = "Great prompt. A strong tradeoff answer should frame context, constraints, options, decision rationale, and measurable outcome. Want me to build a reusable 90-second interview script with examples?";
+
+    const progressEl = document.getElementById("progress");
+    const viewportEl = document.getElementById("viewport");
+    const annotationTitleEl = document.getElementById("annotationTitle");
+    const annotationTextEl = document.getElementById("annotationText");
+    const backBtn = document.getElementById("backBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    let currentStep = 1;
+    let typedDraft = "";
+    let confirmDraft = transcriptText;
+    let nudgeVisible = false;
+    let nudgeSuppressedUntil = 0;
+    let nudgeTimer = null;
+    let recordTypeTimer = null;
+    let recordAutoTimer = null;
+    let recordingAdvanced = false;
+
+    const micSVG = `
+      <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M12 15.2a3.8 3.8 0 0 0 3.8-3.8V6.8a3.8 3.8 0 0 0-7.6 0v4.6a3.8 3.8 0 0 0 3.8 3.8Zm6.4-3.8a.9.9 0 1 0-1.8 0 4.6 4.6 0 1 1-9.2 0 .9.9 0 0 0-1.8 0 6.4 6.4 0 0 0 5.5 6.3v2.1H9.2a.9.9 0 1 0 0 1.8h5.6a.9.9 0 1 0 0-1.8H13v-2.1a6.4 6.4 0 0 0 5.4-6.3Z"/>
+      </svg>
+    `;
+
+    function chatHistory(extraBubble) {
+      return `
+        <div class="chat-area">
+          <div class="bubble user">I am preparing for interviews and need help structuring behavioral answers.</div>
+          <div class="bubble ai">Absolutely. I can help you craft concise STAR stories and refine tradeoff examples.</div>
+          ${extraBubble ? `<div class="bubble ai">${aiFinalReply}</div>` : ""}
+          ${currentStep === 5 ? `<div class="success-badge">Voice query sent successfully</div>` : ""}
+        </div>
+      `;
+    }
+
+    function renderStep1() {
+      return `
+        <div class="screen active">
+          ${chatHistory(false)}
+          <div class="composer-wrap">
+            <div class="nudge-strip ${nudgeVisible ? "show" : ""}" id="nudgeStrip">
+              <span class="pulse-dot" aria-hidden="true"></span>
+              <span class="nudge-text">Try saying this instead - faster!</span>
+              <button type="button" id="dismissNudge" class="dismiss-btn" aria-label="Dismiss nudge">x</button>
+            </div>
+            <div class="input-pill">
+              <input id="typingInput" type="text" placeholder="Type your message..." value="${escapeHtml(typedDraft)}">
+              <button id="homeMicBtn" type="button" class="icon-btn mic-btn" aria-label="Open voice input">${micSVG}</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStep2() {
+      return `
+        <div class="screen active">
+          ${chatHistory(false)}
+          <div class="composer-wrap">
+            <div class="input-pill">
+              <input type="text" placeholder="Type your message..." value="${escapeHtml(typedDraft)}" readonly>
+              <button type="button" class="icon-btn mic-btn" aria-label="Voice input">${micSVG}</button>
+            </div>
+          </div>
+          <div class="overlay-dim">
+            <div class="sheet">
+              <div class="circle">${micSVG}</div>
+              <h2>Enable voice input?</h2>
+              <p>Speak your query naturally - no typing needed.</p>
+              <div class="privacy">Your voice is processed on-device and never stored.</div>
+              <button type="button" class="primary-btn" id="enableVoiceBtn">Enable voice</button>
+              <button type="button" class="secondary-link" id="notNowBtn">Not now</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStep3() {
+      return `
+        <div class="screen active" id="recordingScreen">
+          ${chatHistory(false)}
+          <div class="record-overlay" id="recordOverlay">
+            <div class="listening">Listening<span class="dots"></span></div>
+            <div class="wave" aria-hidden="true">
+              <span style="--h: 8px; --d: 0ms;"></span>
+              <span style="--h: 14px; --d: 80ms;"></span>
+              <span style="--h: 22px; --d: 160ms;"></span>
+              <span style="--h: 30px; --d: 240ms;"></span>
+              <span style="--h: 42px; --d: 320ms;"></span>
+              <span style="--h: 30px; --d: 400ms;"></span>
+              <span style="--h: 22px; --d: 480ms;"></span>
+              <span style="--h: 14px; --d: 560ms;"></span>
+              <span style="--h: 8px; --d: 640ms;"></span>
+            </div>
+            <div class="record-btn">${micSVG}</div>
+            <div class="transcript-live" id="liveTranscript"></div>
+            <button type="button" class="cancel-link" id="cancelRecordBtn">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStep4() {
+      return `
+        <div class="screen active">
+          ${chatHistory(false)}
+          <div class="confirm-panel">
+            <div class="transcript-box">
+              <span class="label">Tap to edit before sending</span>
+              ${escapeHtml(transcriptText)}
+            </div>
+            <div class="confirm-row">
+              <button type="button" class="icon-btn mic-btn" id="rerecordBtn" aria-label="Re-record">${micSVG}</button>
+              <input id="confirmInput" type="text" value="${escapeHtml(confirmDraft)}" aria-label="Editable transcription">
+              <button type="button" class="icon-btn send-btn" id="sendBtn" aria-label="Send transcription">&#10148;</button>
+            </div>
+            <div class="tooltip">Voice saved you ~8 seconds vs typing</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStep5() {
+      return `
+        <div class="screen active">
+          ${chatHistory(true)}
+          <div class="composer-wrap">
+            <div class="input-pill">
+              <input type="text" placeholder="Type or use voice..." readonly>
+              <button type="button" class="icon-btn mic-btn active" aria-label="Voice active">${micSVG}</button>
+            </div>
+          </div>
+          <div class="restart-wrap">
+            <button type="button" class="restart-btn" id="restartBtn">Restart prototype</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProgress() {
+      progressEl.innerHTML = steps.map((step) => `
+        <span class="step-pill ${step.id === currentStep ? "active" : ""}">${step.label}</span>
+      `).join("");
+    }
+
+    function renderAnnotations() {
+      annotationTitleEl.textContent = `${currentStep}. ${steps[currentStep - 1].label}`;
+      annotationTextEl.textContent = annotations[currentStep];
+    }
+
+    function updateControls() {
+      backBtn.disabled = currentStep === 1;
+      nextBtn.textContent = currentStep === 5 ? "Restart" : "Next / CTA";
+    }
+
+    function renderScreen() {
+      if (currentStep === 1) viewportEl.innerHTML = renderStep1();
+      if (currentStep === 2) viewportEl.innerHTML = renderStep2();
+      if (currentStep === 3) viewportEl.innerHTML = renderStep3();
+      if (currentStep === 4) viewportEl.innerHTML = renderStep4();
+      if (currentStep === 5) viewportEl.innerHTML = renderStep5();
+
+      bindScreenInteractions();
+      if (currentStep === 3) startRecordingFlow();
+    }
+
+    function renderAll() {
+      renderProgress();
+      renderScreen();
+      renderAnnotations();
+      updateControls();
+    }
+
+    function clearTimers() {
+      clearTimeout(nudgeTimer);
+      clearTimeout(recordAutoTimer);
+      clearInterval(recordTypeTimer);
+      nudgeTimer = null;
+      recordAutoTimer = null;
+      recordTypeTimer = null;
+    }
+
+    function goToStep(step) {
+      const target = Math.max(1, Math.min(5, step));
+      clearTimers();
+      recordingAdvanced = false;
+      currentStep = target;
+      renderAll();
+    }
+
+    function maybeShowNudge() {
+      const allowed = Date.now() > nudgeSuppressedUntil;
+      if (typedDraft.trim().length >= 40 && allowed) {
+        nudgeVisible = true;
+        const nudgeEl = document.getElementById("nudgeStrip");
+        if (nudgeEl) nudgeEl.classList.add("show");
+        clearTimeout(nudgeTimer);
+        nudgeTimer = setTimeout(() => {
+          if (currentStep === 1 && typedDraft.trim().length >= 40) {
+            nudgeVisible = false;
+            const localNudge = document.getElementById("nudgeStrip");
+            if (localNudge) localNudge.classList.remove("show");
+          }
+        }, 3000);
+      } else {
+        nudgeVisible = false;
+        const nudgeEl = document.getElementById("nudgeStrip");
+        if (nudgeEl) nudgeEl.classList.remove("show");
+      }
+    }
+
+    function startRecordingFlow() {
+      const transcriptNode = document.getElementById("liveTranscript");
+      if (!transcriptNode) return;
+      transcriptNode.textContent = "";
+      let index = 0;
+      recordTypeTimer = setInterval(() => {
+        index += 1;
+        transcriptNode.textContent = transcriptText.slice(0, index);
+        if (index >= transcriptText.length) clearInterval(recordTypeTimer);
+      }, 24);
+
+      recordAutoTimer = setTimeout(() => {
+        advanceFromRecording();
+      }, 3000);
+    }
+
+    function advanceFromRecording() {
+      if (recordingAdvanced || currentStep !== 3) return;
+      recordingAdvanced = true;
+      goToStep(4);
+    }
+
+    function resetPrototype() {
+      typedDraft = "";
+      confirmDraft = transcriptText;
+      nudgeVisible = false;
+      nudgeSuppressedUntil = 0;
+      goToStep(1);
+    }
+
+    function bindScreenInteractions() {
+      if (currentStep === 1) {
+        const typingInput = document.getElementById("typingInput");
+        const nudgeStrip = document.getElementById("nudgeStrip");
+        const dismissNudge = document.getElementById("dismissNudge");
+        const homeMicBtn = document.getElementById("homeMicBtn");
+
+        typingInput?.addEventListener("input", (e) => {
+          typedDraft = e.target.value;
+          maybeShowNudge();
+        });
+
+        homeMicBtn?.addEventListener("click", () => goToStep(2));
+        nudgeStrip?.addEventListener("click", (e) => {
+          if (e.target.id === "dismissNudge") return;
+          goToStep(2);
+        });
+
+        dismissNudge?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          nudgeVisible = false;
+          nudgeSuppressedUntil = Date.now() + 24 * 60 * 60 * 1000;
+          maybeShowNudge();
+        });
+      }
+
+      if (currentStep === 2) {
+        document.getElementById("enableVoiceBtn")?.addEventListener("click", () => goToStep(3));
+        document.getElementById("notNowBtn")?.addEventListener("click", () => goToStep(1));
+      }
+
+      if (currentStep === 3) {
+        const overlay = document.getElementById("recordOverlay");
+        const cancelBtn = document.getElementById("cancelRecordBtn");
+
+        overlay?.addEventListener("click", () => {
+          advanceFromRecording();
+        });
+
+        cancelBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          goToStep(1);
+        });
+      }
+
+      if (currentStep === 4) {
+        document.getElementById("sendBtn")?.addEventListener("click", () => goToStep(5));
+        document.getElementById("rerecordBtn")?.addEventListener("click", () => goToStep(3));
+        document.getElementById("confirmInput")?.addEventListener("input", (e) => {
+          confirmDraft = e.target.value;
+        });
+      }
+
+      if (currentStep === 5) {
+        document.getElementById("restartBtn")?.addEventListener("click", resetPrototype);
+      }
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    backBtn.addEventListener("click", () => {
+      if (currentStep > 1) goToStep(currentStep - 1);
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (currentStep === 5) {
+        resetPrototype();
+        return;
+      }
+      goToStep(currentStep + 1);
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>

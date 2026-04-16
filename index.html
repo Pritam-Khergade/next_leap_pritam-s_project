@@ -61,7 +61,8 @@
     }
 
     .phone-shell {
-      width: min(375px, 92vw);
+      width: 360px;
+      height: 640px;
       margin: 0 auto;
       border-radius: 36px;
       border: 10px solid #0d0f14;
@@ -69,7 +70,6 @@
       background: #ffffff;
       box-shadow: 0 24px 60px rgba(17, 28, 44, 0.28);
       position: relative;
-      aspect-ratio: 375 / 812;
     }
 
     .notch {
@@ -128,12 +128,28 @@
 
     .chat-area {
       position: absolute;
-      inset: 0;
-      padding: 16px 14px 120px;
-      overflow: auto;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 16px 14px 12px;
+      overflow-y: auto;
+      overflow-x: hidden;
       display: grid;
       align-content: start;
       gap: 10px;
+    }
+
+    .screen:has(.composer-wrap) .chat-area {
+      bottom: 132px;
+    }
+
+    .screen:has(.confirm-panel) .chat-area {
+      bottom: 188px;
+    }
+
+    .screen:has(.restart-wrap) .chat-area {
+      bottom: 86px;
     }
 
     .bubble {
@@ -582,6 +598,25 @@
     .mic-icon {
       width: 20px;
       height: 20px;
+    }
+
+    @media (max-width: 420px) {
+      body {
+        padding: 10px;
+      }
+
+      .prototype {
+        gap: 10px;
+      }
+
+      .phone-shell {
+        width: min(360px, calc(100vw - 20px));
+        height: min(640px, calc(100vh - 200px));
+      }
+
+      .annotation {
+        min-height: 78px;
+      }
     }
 
     @keyframes pulse {
